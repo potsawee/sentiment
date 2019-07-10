@@ -1,6 +1,7 @@
 import pdb
 import string
 import collections
+import os
 import numpy as np
 
 import tensorflow as tf
@@ -67,7 +68,7 @@ def process_phrases(inputs, word2id, max_sentence_length=20):
 def process_sentiments(inputs):
     outputs = []
     for sentiment in inputs:
-        outputs.append(float(sentiment) - 2.0)
+        outputs.append(int(sentiment))
     return outputs
 
 def build_model(config):
@@ -85,17 +86,30 @@ def build_model(config):
     x = layers.LSTM(lstm_size)(x)
 
     # Regression - value in between -1 to +1
-    x = layers.Dense(1, activation='tanh')(x)
-    predictions = 2.0 * x
+    x = layers.Dense(64, activation='sigmoid')(x)
+    outputs = layers.Dense(5, activation='softmax')(x)
 
-    model = keras.Model(inputs=inputs, outputs=predictions)
+
+    model = keras.Model(inputs=inputs, outputs=outputs)
 
     return model
 
 def main():
+    # For using GPU
+    if 'X_SGE_CUDA_DEVICE' in os.environ:
+        print('running on the stack...')
+        cuda_device = os.environ['X_SGE_CUDA_DEVICE']
+        print('X_SGE_CUDA_DEVICE is set to {}'.format(cuda_device))
+        os.environ['CUDA_VISIBLE_DEVICES'] = cuda_device
+
+    else: # development only e.g. air202
+        print('running locally...')
+        os.environ['CUDA_VISIBLE_DEVICES'] = '1' # choose the device (GPU) here
+
+
     # paths
-    path_vocab = 'google-10000-english.txt'
-    path_train = '../sentiment-analysis-on-movie-reviews/train.tsv'
+    path_vocab = '/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment/google-10000-english.txt'
+    path_train = '/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment-analysis-on-movie-reviews/train.tsv'
 
     # Pre-processing & Prepare data
     max_sentence_length = 25
@@ -113,16 +127,23 @@ def main():
     config['max_sentence_length'] = max_sentence_length
 
     model = build_model(config)
-    model.compile(optimizer='sgd',
-                  loss='mean_squared_error',
+    # model.compile(optimizer='sgd',
+    #              loss='mean_squared_error',
+    #               metrics=['accuracy'])
+    model.compile(optimizer='adam',
+                  loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
     # Train the model
     phrases = np.array(phrases, dtype=np.int32)
-    sentiments = np.array(sentiments, dtype=np.float32)
+    sentiments = np.array(sentiments, dtype=np.int32)
+    sentiments = tf.keras.utils.to_categorical(sentiments, num_classes=5)
     model.fit(phrases, sentiments,
               batch_size=64,
-              epochs=3)
+              epochs=10)
+
+    # Save the model
+    model.save('/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment/models/lstm1-10.h5')
 
 
 
