@@ -83,12 +83,19 @@ def build_model(config):
     x = keras.layers.Embedding(num_words, embedding_size)(inputs)
 
     # LSTM
-    x = keras.layers.LSTM(lstm_size)(x)
+    # x = keras.layers.LSTM(lstm_size)(x)
+    x = keras.layers.Bidirectional(layer=keras.layers.LSTM(units=lstm_size,
+                                                           dropout=0.2,
+                                                           recurrent_dropout=0.2),
+                                   merge_mode='concat')(x)
+
+    x = keras.layers.Dropout(0.2)(x)
 
     # Regression - value in between -1 to +1
     x = keras.layers.Dense(64, activation='sigmoid')(x)
+    x = keras.layers.Dropout(0.2)(x)
+    
     outputs = keras.layers.Dense(5, activation='softmax')(x)
-
 
     model = keras.Model(inputs=inputs, outputs=outputs)
 
@@ -141,11 +148,11 @@ def main():
     callbacks = [
         keras.callbacks.EarlyStopping(
         # Stop training when `val_loss` is no longer improving
-        monitor='val_acc',
+        monitor='val_accuracy',
         # "no longer improving" being defined as "no better than 1e-2 less"
         min_delta=2e-3,
         # "no longer improving" being further defined as "for at least 2 epochs"
-        patience=2)
+        patience=3)
     ]
 
     model.fit(phrases, sentiments,
@@ -156,7 +163,7 @@ def main():
               callbacks=callbacks)
 
     # Save the model
-    model.save('/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment/models/lstm1-50-tf1.h5')
+    model.save('/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment/models/bilstm2.h5')
 
 
 
