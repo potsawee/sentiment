@@ -6,7 +6,7 @@ import numpy as np
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
+# from tensorflow.keras import layers ---> not compatible with tf 1.5
 
 def load_vocab(path):
     with open(path, encoding="utf8") as file:
@@ -80,14 +80,14 @@ def build_model(config):
     inputs = keras.Input(shape=(None,), name='input') # variable-length sequence of integers (word ids)
 
     # embed each word in the input into 200-dimensional vector
-    x = layers.Embedding(num_words, embedding_size)(inputs)
+    x = keras.layers.Embedding(num_words, embedding_size)(inputs)
 
     # LSTM
-    x = layers.LSTM(lstm_size)(x)
+    x = keras.layers.LSTM(lstm_size)(x)
 
     # Regression - value in between -1 to +1
-    x = layers.Dense(64, activation='sigmoid')(x)
-    outputs = layers.Dense(5, activation='softmax')(x)
+    x = keras.layers.Dense(64, activation='sigmoid')(x)
+    outputs = keras.layers.Dense(5, activation='softmax')(x)
 
 
     model = keras.Model(inputs=inputs, outputs=outputs)
@@ -104,7 +104,7 @@ def main():
 
     else: # development only e.g. air202
         print('running locally...')
-        os.environ['CUDA_VISIBLE_DEVICES'] = '1' # choose the device (GPU) here
+        os.environ['CUDA_VISIBLE_DEVICES'] = '3' # choose the device (GPU) here
 
 
     # paths
@@ -127,9 +127,7 @@ def main():
     config['max_sentence_length'] = max_sentence_length
 
     model = build_model(config)
-    # model.compile(optimizer='sgd',
-    #              loss='mean_squared_error',
-    #               metrics=['accuracy'])
+
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
@@ -138,12 +136,27 @@ def main():
     phrases = np.array(phrases, dtype=np.int32)
     sentiments = np.array(sentiments, dtype=np.int32)
     sentiments = tf.keras.utils.to_categorical(sentiments, num_classes=5)
+
+
+    callbacks = [
+        keras.callbacks.EarlyStopping(
+        # Stop training when `val_loss` is no longer improving
+        monitor='val_acc',
+        # "no longer improving" being defined as "no better than 1e-2 less"
+        min_delta=2e-3,
+        # "no longer improving" being further defined as "for at least 2 epochs"
+        patience=2)
+    ]
+
     model.fit(phrases, sentiments,
-              batch_size=64,
-              epochs=10)
+              batch_size=128,
+              epochs=50,
+              shuffle=True,
+              validation_split=0.2,
+              callbacks=callbacks)
 
     # Save the model
-    model.save('/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment/models/lstm1-10.h5')
+    model.save('/home/alta/BLTSpeaking/ged-pm574/summer2019/sentiment/models/lstm1-50-tf1.h5')
 
 
 

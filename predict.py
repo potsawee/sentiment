@@ -6,7 +6,6 @@ import numpy as np
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
 
 def load_vocab(path):
     with open(path, encoding="utf8") as file:
@@ -70,8 +69,11 @@ def make_predictions(model, inputs):
     return scores
 
 def main():
+    # Enable/Disable GPU
+    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    
     # Recreate the exact same model purely from the file
-    trained_model = keras.models.load_model('models/lstm1-10.h5')
+    trained_model = keras.models.load_model('models/lstm1-50-tf1.h5')
 
     word2id = load_vocab('google-10000-english.txt')
     phrases, ids = read_test_data('../sentiment-analysis-on-movie-reviews/test.tsv')
@@ -81,7 +83,6 @@ def main():
 
     scores = make_predictions(trained_model, phrases)
 
-    pdb.set_trace()
     print(len(scores))
     print(len(ids))
 
